@@ -9,15 +9,22 @@ jobs:
   matrix-build:
     strategy:
       matrix:
-        target_arch: [ 'amd64', 'arm64' ]
         apk_bin: [ 'original-apk', 'patched-apk' ]
+        reapply_qemu: [ true, false ]
+        target_arch: [ 'amd64', 'arm64' ]
       fail-fast: false
 
-    name: ${{matrix.target_arch }} cross-arch / ${{ matrix.apk_bin }}
+    name: ${{ matrix.apk_bin }} / ${{matrix.target_arch }} / ${{matrix.reapply_qemu && 'QEMU forced' || 'QEMU host-original' }}
     runs-on: ${{ matrix.target_arch == 'amd64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
 
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+
+      - name: Set up QEMU 10.0.4
+        uses: docker/setup-qemu-action@v3
+        if: matrix.reapply_qemu == true
+        with:
+          image: tonistiigi/binfmt:qemu-v10.0.4-56
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
