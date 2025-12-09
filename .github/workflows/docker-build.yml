@@ -6,8 +6,16 @@ on:
       - master
 
 jobs:
-  original-arm64-on-amd64:
-    runs-on: 'ubuntu-24.04'
+  matrix-build:
+    strategy:
+      matrix:
+        target_arch: [ 'amd64', 'arm64' ]
+        apk_bin: [ 'original-apk', 'patched-apk' ]
+      fail-fast: false
+
+    name: ${{matrix.target_arch }} cross-arch / ${{ matrix.apk_bin }}
+    runs-on: ${{ matrix.target_arch == 'amd64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
@@ -15,34 +23,4 @@ jobs:
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
 
       - name: Build
-        run: docker buildx build --platform linux/arm64 --pull -f original-apk.Dockerfile .
-  original-amd64-on-arm64:
-    runs-on: 'ubuntu-24.04-arm'
-    steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
-
-      - name: Build
-        run: docker buildx build --platform linux/amd64 --pull -f original-apk.Dockerfile .
-  patched-arm64-on-amd64:
-    runs-on: 'ubuntu-24.04'
-    steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
-
-      - name: Build
-        run: docker buildx build --platform linux/arm64 --pull --build-arg APK_BIN_URL=https://gitlab.alpinelinux.org/alpine/apk-tools/-/jobs/2132015/artifacts/raw/build-static/src/apk.static-aarch64?inline=false .
-  patched-amd64-on-arm64:
-    runs-on: 'ubuntu-24.04-arm'
-    steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
-
-      - name: Build
-        run: docker buildx build --platform linux/amd64 --pull --build-arg APK_BIN_URL=https://gitlab.alpinelinux.org/alpine/apk-tools/-/jobs/2132013/artifacts/raw/build-static/src/apk.static-x86_64?inline=false .
+        run: docker buildx build --platform linux/${{ matrix.target_arch }} --pull -f ${{ matrix.apk_bin }}.Dockerfile --build-arg APK_BIN_URL=${{ (matrix.apk_bin == 'patched-apk' && matrix.target_arch == 'amd64' && 'https://gitlab.alpinelinux.org/alpine/apk-tools/-/jobs/2132013/artifacts/raw/build-static/src/apk.static-x86_64?inline=false') || (matrix.apk_bin == 'patched-apk' && matrix.target_arch == 'arm64' && 'https://gitlab.alpinelinux.org/alpine/apk-tools/-/jobs/2132015/artifacts/raw/build-static/src/apk.static-aarch64?inline=false') || '' }} .
